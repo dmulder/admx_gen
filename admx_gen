@@ -1,0 +1,36 @@
+#!/usr/bin/python3
+import sys
+import xml.etree.ElementTree as etree
+from xml.dom import minidom
+
+def addPolicyNamespaces(policyNamespaces):
+    print('policyNamespaces:')
+    target_prefix = input('What is the target prefix? ')
+    target_namespace = input('What is the target namespace? ')
+    target = etree.SubElement(policyNamespaces, 'target')
+    target.attrib['prefix'] = target_prefix
+    target.attrib['namespace'] = target_namespace
+    using_prefix = input('What is the using prefix? ')
+    using_namespace = input('What is the using namespace? ')
+    using = etree.SubElement(policyNamespaces, 'using')
+    using.attrib['prefix'] = using_prefix
+    using.attrib['namespace'] = using_namespace
+
+xml_data = etree.ElementTree(etree.Element('policyDefinitions'))
+policyDefinitions = xml_data.getroot()
+policyDefinitions.attrib['xmlns:xsd'] = 'http://www.w3.org/2001/XMLSchema'
+policyDefinitions.attrib['xmlns:xsi'] = 'http://www.w3.org/2001/XMLSchema-instance'
+policyDefinitions.attrib['revision'] = '1.0'
+policyDefinitions.attrib['schemaVersion'] = '1.0'
+policyDefinitions.attrib['xmlns'] = 'http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions'
+
+policyNamespaces = etree.SubElement(policyDefinitions, 'policyNamespaces')
+addPolicyNamespaces(policyNamespaces)
+
+categories = etree.SubElement(policyDefinitions, 'categories')
+
+policies = etree.SubElement(policyDefinitions, 'policies')
+
+xmlstr = minidom.parseString(etree.tostring(policyDefinitions, encoding='utf-8', xml_declaration=True))
+with open('output.admx', 'w') as out:
+    xmlstr.writexml(out, addindent='  ', newl='\n')
