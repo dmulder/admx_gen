@@ -2,35 +2,77 @@
 import sys
 import xml.etree.ElementTree as etree
 from xml.dom import minidom
+import uuid
 
-def addPolicyNamespaces(policyNamespaces):
-    print('policyNamespaces:')
-    target_prefix = input('What is the target prefix? ')
-    target_namespace = input('What is the target namespace? ')
+def getPolicyDefinitions():
+    policyDefinitions = etree.Element('policyDefinitions')
+    policyDefinitions.attrib['xmlns:xsd'] = 'http://www.w3.org/2001/XMLSchema'
+    policyDefinitions.attrib['xmlns:xsi'] = 'http://www.w3.org/2001/XMLSchema-instance'
+    policyDefinitions.attrib['revision'] = '1.0'
+    policyDefinitions.attrib['schemaVersion'] = '1.0'
+    policyDefinitions.attrib['xmlns'] = 'http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions'
+    return policyDefinitions
+
+def addPolicyNamespaces(policyDefinitions,
+                        target_prefix=None, target_namespace=None,
+                        using_prefix=None, using_namespace=None):
+    policyNamespaces = etree.SubElement(policyDefinitions, 'policyNamespaces')
+    if target_prefix == None:
+        target_prefix = input('What is the policyNamespaces target prefix? ')
+    if target_namespace == None:
+        target_namespace = input('What is the policyNamespaces target namespace? ')
     target = etree.SubElement(policyNamespaces, 'target')
     target.attrib['prefix'] = target_prefix
     target.attrib['namespace'] = target_namespace
-    using_prefix = input('What is the using prefix? ')
-    using_namespace = input('What is the using namespace? ')
+    if using_prefix == None:
+        using_prefix = input('What is the policyNamespaces using prefix? ')
+    if using_namespace == None:
+        using_namespace = input('What is the policyNamespaces using namespace? ')
     using = etree.SubElement(policyNamespaces, 'using')
     using.attrib['prefix'] = using_prefix
     using.attrib['namespace'] = using_namespace
 
-xml_data = etree.ElementTree(etree.Element('policyDefinitions'))
-policyDefinitions = xml_data.getroot()
-policyDefinitions.attrib['xmlns:xsd'] = 'http://www.w3.org/2001/XMLSchema'
-policyDefinitions.attrib['xmlns:xsi'] = 'http://www.w3.org/2001/XMLSchema-instance'
-policyDefinitions.attrib['revision'] = '1.0'
-policyDefinitions.attrib['schemaVersion'] = '1.0'
-policyDefinitions.attrib['xmlns'] = 'http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions'
+def addCategories(policyDefinitions):
+    categories = etree.SubElement(policyDefinitions, 'categories')
+    category = addCategory(categories)
+    while category != None:
+        category = addCategory(categories)
+    return categories
 
-policyNamespaces = etree.SubElement(policyDefinitions, 'policyNamespaces')
-addPolicyNamespaces(policyNamespaces)
+def addCategory(categories, name=None, displayName=None, parentCategoryRef=None):
+    try:
+        if name == None:
+            rand_uuid = 'CAT_%s' % str(uuid.uuid4()).upper().replace('-', '_')
+            name = input('What is the category name? [%s] ' % rand_uuid)
+            if not name:
+                name = rand_uuid
+        if displayName == None:
+            displayName = input('What is the category displayName? ')
+        if parentCategoryRef == None:
+            parentCategoryRef = input('What is the category parentCategory ref? ')
+    except EOFError:
+        return None
+    category = etree.SubElement(categories, 'category')
+    category.attrib['name'] = name
+    category.attrib['displayName'] = displayName
+    if parentCategoryRef:
+        parentCategory = etree.SubElement(category, 'parentCategory')
+        parentCategory.attrib['ref'] = parentCategoryRef
+    return category
 
-categories = etree.SubElement(policyDefinitions, 'categories')
+def prettyPrintADMX(policyDefinitions, filename):
+    xmlstr = minidom.parseString(etree.tostring(policyDefinitions,
+                                                encoding='utf-8',
+                                                xml_declaration=True))
+    with open(filename, 'w') as out:
+        xmlstr.writexml(out, addindent='  ', newl='\n')
 
-policies = etree.SubElement(policyDefinitions, 'policies')
+if __name__ == '__main__':
+    policyDefinitions = getPolicyDefinitions()
+    addPolicyNamespaces(policyDefinitions)
 
-xmlstr = minidom.parseString(etree.tostring(policyDefinitions, encoding='utf-8', xml_declaration=True))
-with open('output.admx', 'w') as out:
-    xmlstr.writexml(out, addindent='  ', newl='\n')
+    addCategories(policyDefinitions)
+
+    policies = etree.SubElement(policyDefinitions, 'policies')
+
+    prettyPrintADMX(policyDefinitions, 'output.admx')
